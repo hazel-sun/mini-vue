@@ -1,11 +1,11 @@
 /* observer.js */
 
 /**
- * 把data中的属性变为响应式
+ * 1.通过Object.defineProperty将数据劫持
+ * 2.每个属性都有自己的dep属性，存放依赖他的watcher
+ * 3.属性变化后会通知自己对应的watcher去更新
  */
-/* observer.js */
-
-class Observer {
+export class Observer {
   constructor(data) {
     // 用来遍历 data
     this.walk(data)
@@ -20,22 +20,22 @@ class Observer {
       this.defineReactive(data, key, data[key])
     })
   }
-  // 转为响应式
-  // 要注意的 和vue.js 写的不同的是
-  // vue.js中是将 属性给了 Vue 转为 getter setter
-  // 这里是 将data中的属性转为getter setter
   defineReactive(obj, key, value) {
     // 如果是对象类型的 也调用walk 变成响应式，不是对象类型的直接在walk会被return
     this.walk(value)
+    // 创建 Dep 对象
+    let dep = new Dep()
     // 保存一下 this
     const self = this
     Object.defineProperty(obj, key, {
-      // 设置可枚举
+      // 设置可枚举 - 可以被循环
       enumerable: true,
-      // 设置可配置
+      // 设置可配置 - 可以被修改
       configurable: true,
       // 获取值
       get() {
+        // 在这里添加观察者对象 Dep.target 表示观察者
+        Dep.target && dep.addSub(Dep.target)
         return value
       },
       // 设置值
@@ -46,8 +46,30 @@ class Observer {
         value = newValue
         // 赋值的话如果是newValue是对象，对象里面的属性也应该设置为响应式的
         self.walk(newValue)
+        // 触发通知 更新视图
+        dep.notify()
       },
     })
   }
 }
 
+class Dep {
+  constructor() {
+    // 存储观察者
+    this.subs = []
+  }
+  // 添加观察者
+  addSub(sub) {
+    // 判断观察者是否存在 和 是否拥有update方法
+    if (sub && sub.update && typeof sub.update === "function") {
+      this.subs.push(sub)
+    }
+  }
+  // 通知方法
+  notify() {
+    // 触发每个观察者的更新方法
+    this.subs.forEach((sub) => {
+      sub.update()
+    })
+  }
+}

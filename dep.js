@@ -10,7 +10,7 @@
   // 添加观察者
   addSub(sub) {
     // 判断观察者是否存在 和 是否拥有update方法
-    if (sub && sub.update) {
+    if (sub && sub.update && typeof sub.update === "function") {
       this.subs.push(sub)
     }
   }

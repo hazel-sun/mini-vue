@@ -1,5 +1,8 @@
 /* vue.js */
-
+/**
+ * 发布订阅模式
+ */
+import Observer from './observer'
 class Vue {
   constructor(options) {
     // 获取到传入的对象 没有默认为空对象
@@ -13,6 +16,10 @@ class Vue {
     this.$data = options.data || {}
     // 调用 _proxyData 处理 data中的属性
     this._proxyData(this.$data)
+    // 使用Obsever把data中的数据转为响应式 并监测数据的变化，渲染视图
+    new Observer(this.$data)
+    // 编译模板 渲染视图
+    new Compiler(this)
   }
   // 把data 中的属性注册到 Vue
   _proxyData(data) {

@@ -1,116 +1,126 @@
-/* compiler.js */
+/**
+ * compiler.js
+ *
+ * 功能
+ * - 编译模板，解析指令/插值表达式
+ * - 负责页面的首次渲染
+ * - 数据变化后，重新渲染视图
+ *
+ * 属性
+ * - el -app元素
+ * - vm -vue实例
+ *
+ * 方法：
+ * - compile(el) -编译入口
+ * - compileElement(node) -编译元素（指令）
+ * - compileText(node) 编译文本（插值）
+ * - isDirective(attrName) -（判断是否为指令）
+ * - isTextNode(node) -（判断是否为文本节点）
+ * - isElementNode(node) - （判断是否问元素节点）
+ */
 
-class Compiler {
-  // vm 指 Vue 实例
+ class Compiler {
   constructor(vm) {
-    // 拿到 vm
+    // 获取vm
     this.vm = vm
-    // 拿到 el
+    // 获取el
     this.el = vm.$el
-    // 编译模板
+    // 编译模板 渲染视图
     this.compile(this.el)
   }
-  // 编译模板
+  // 编译模板渲染视图
   compile(el) {
-    // 获取子节点 如果使用 forEach遍历就把伪数组转为真的数组
-    let childNodes = [...el.childNodes]
-    childNodes.forEach((node) => {
-      // 根据不同的节点类型进行编译
-      // 文本类型的节点
+    // 不存在则返回
+    if (!el) return;
+    // 获取子节点
+    const nodes = el.childNodes;
+    //收集
+    Array.from(nodes).forEach((node) => {
+      // 文本类型节点的编译
       if (this.isTextNode(node)) {
         // 编译文本节点
         this.compileText(node)
       } else if (this.isElementNode(node)) {
-        //元素节点
+        // 编译元素节点
         this.compileElement(node)
       }
-      // 判断是否还存在子节点考虑递归
+      // 判断是否还存在子节点
       if (node.childNodes && node.childNodes.length) {
-        // 继续递归编译模板
-        this.compile(node)
+        this.compile(node);
       }
-    })
-  }
-  // 编译文本节点(简单的实现)
-  compileText(node) {
-    // 核心思想利用把正则表达式把{{}}去掉找到里面的变量
-    // 再去Vue找这个变量赋值给node.textContent
-    let reg = /\{\{(.+?)\}\}/
-    // 获取节点的文本内容
-    let val = node.textContent
-    // 判断是否有 {{}}
-    if (reg.test(val)) {
-      // 获取分组一  也就是 {{}} 里面的内容 去除前后空格
-      let key = RegExp.$1.trim()
-      // 进行替换再赋值给node
-      node.textContent = val.replace(reg, this.vm[key])
-      // 创建观察者
-      new Watcher(this.vm, key, (newValue) => {
-        node.textContent = newValue
-      })
-    }
-  }
-  // 编译元素节点这里只处理指令
-  compileElement(node) {
-    // 获取到元素节点上面的所有属性进行遍历
-    ![...node.attributes].forEach((attr) => {
-      // 获取属性名
-      let attrName = attr.name
-      // 判断是否是 v- 开头的指令
-      if (this.isDirective(attrName)) {
-        // 除去 v- 方便操作
-        attrName = attrName.substr(2)
-        // 获取 指令的值就是  v-text = "msg"  中msg
-        // msg 作为 key 去Vue 找这个变量
-        let key = attr.value
-        // 指令操作 执行指令方法
-        // vue指令很多为了避免大量个 if判断这里就写个 uapdate 方法
-        this.update(node, key, attrName)
-      }
-    })
+    });
   }
   // 添加指令方法 并且执行
-  update(node, key, attrName) {
-    // 比如添加 textUpdater 就是用来处理 v-text 方法
-    // 我们应该就内置一个 textUpdater 方法进行调用
-    // 加个后缀加什么无所谓但是要定义相应的方法
-    let updateFn = this[attrName + 'Updater']
-    // 如果存在这个内置方法 就可以调用了
-    updateFn && updateFn.call(this, node, key, this.vm[key])
+  update(node, value, attrName, key) {
+    // 定义相应的方法 举个例子：添加textUpdater就是用来处理v-text的
+    const updateFn = this[`${attrName}Updater`];
+    // 若存在 则调用
+    updateFn && updateFn.call(this, node, value, key);
   }
-  // 提前写好 相应的指定方法比如这个 v-text
-  // 使用的时候 和 Vue 的一样
-  textUpdater(node, key, value) {
-    node.textContent = value
-    // 创建观察者
-    new Watcher(this.vm, key, (newValue) => {
-      node.textContent = newValue
-    })
+  // 用来处理v-text
+  textUpdater(node, value, key) {
+    node.textContent = value;
   }
-  // v-model
-  modelUpdater(node, key, value) {
-    node.value = value
-    // 创建观察者
-    new Watcher(this.vm, key, (newValue) => {
-      node.value = newValue
-    })
-    // 这里实现双向绑定
-    node.addEventListener('input', () => {
-      this.vm[key] = node.value
-    })
+  // 用来处理v-model
+  modelUpdater(node, value, key) {
+    node.value = value;
+    // 用来实现双向数据绑定
+    node.addEventListener("input", (e) => {
+      this.vm[key] = node.value;
+    });
   }
-
-  // 判断元素的属性是否是 vue 指令
-  isDirective(attr) {
-    return attr.startsWith('v-')
+  // 编译元素节点
+  compileElement(node) {
+    // 获取到元素节点上面的所有属性进行遍历
+    Array.from(node.attributes).forEach((attr) => {
+      // 获取属性名
+      let _attrName = attr.name
+      // 判断是否是 v- 开头
+      if (this.isDirective(_attrName)) {
+        // 删除 v-
+        const attrName = _attrName.substr(2);
+        // 获取属性值 并赋值给key
+        const key = attr.value;
+        const value = this.vm[key];
+        // 添加指令方法
+        this.update(node, value, attrName, key);
+        // 数据更新之后，通过wather更新视图
+        new Watcher(this.vm, key, (newValue) => {
+          this.update(node, newValue, attrName, key);
+        });
+      }
+    });
+  }
+  // 编译文本节点
+  compileText(node) {
+    // . 表示任意单个字符，不包含换行符、+ 表示匹配前面多个相同的字符、？表示非贪婪模式，尽可能早的结束查找
+    const reg = /\{\{(.+?)\}\}/; 
+    // 获取节点的文本内容
+    var param = node.textContent;
+    // 判断是否有 {{}}
+    if (reg.test(param)) {
+      //  $1 表示匹配的第一个，也就是{{}}里面的内容
+      // 去除 {{}} 前后空格
+      const key = RegExp.$1.trim();
+      // 赋值给node
+      node.textContent = param.replace(reg, this.vm[key]);
+      // 编译模板的时候，创建一个watcher实例，并在内部挂载到Dep上
+      new Watcher(this.vm, key, (newValue) => {
+        // 通过回调函数，更新视图
+        node.textContent = newValue;
+      });
+    }
+  }
+  // 判断元素的属性是否是vue指令
+  isDirective(attrName) {
+    return attrName && attrName.startsWith("v-");
+  }
+  // 判断是否是文本节点
+  isTextNode(node) {
+    return node && node.nodeType === 3;
   }
   // 判断是否是元素节点
   isElementNode(node) {
-    return node.nodeType === 1
-  }
-  // 判断是否是 文本 节点
-  isTextNode(node) {
-    return node.nodeType === 3
+    return node && node.nodeType === 1;
   }
 }
-
