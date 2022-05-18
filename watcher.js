@@ -1,5 +1,6 @@
-/* watcher.js */
-import Dep from './dep'
+/**
+ * 
+ */
 class Watcher {
   constructor(vm, key, cb) {
     // vm 是 Vue 实例

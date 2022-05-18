@@ -5,7 +5,7 @@
  * 2.每个属性都有自己的dep属性，存放依赖他的watcher
  * 3.属性变化后会通知自己对应的watcher去更新
  */
-export class Observer {
+ export class Observer {
   constructor(data) {
     // 用来遍历 data
     this.walk(data)
@@ -49,27 +49,6 @@ export class Observer {
         // 触发通知 更新视图
         dep.notify()
       },
-    })
-  }
-}
-
-class Dep {
-  constructor() {
-    // 存储观察者
-    this.subs = []
-  }
-  // 添加观察者
-  addSub(sub) {
-    // 判断观察者是否存在 和 是否拥有update方法
-    if (sub && sub.update && typeof sub.update === "function") {
-      this.subs.push(sub)
-    }
-  }
-  // 通知方法
-  notify() {
-    // 触发每个观察者的更新方法
-    this.subs.forEach((sub) => {
-      sub.update()
     })
   }
 }
